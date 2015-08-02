@@ -1,8 +1,10 @@
 # Compiled Object files
+src/*.o
 *.slo
 *.lo
 *.o
 *.obj
+
 
 # Precompiled Headers
 *.gch
@@ -17,6 +19,7 @@
 *.mod
 
 # Compiled Static libraries
+lib/*.*
 *.lai
 *.la
 *.a
@@ -26,3 +29,13 @@
 *.exe
 *.out
 *.app
+
+# Ctags files
+.tags*
+
+
+# Unwanted files
+.cproject
+.project
+.settings/
+

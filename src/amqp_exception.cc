@@ -1,4 +1,4 @@
-#include "amqp++.h"
+#include "amqp11.hpp"
 
 using std::string;
 

@@ -16,7 +16,7 @@ class SynchronizedQueue: public ISynchronizedQueue<T>
 {
     boost::mutex m_mutex;
     std::deque<T> m_queue;
- 
+
 public:
     bool add(T pkt)
     {
@@ -37,5 +37,3 @@ public:
         return true;
     }
 };
-
-

@@ -1,3 +1,8 @@
+/**
+ *	amqp11.hpp:
+ * 				amqp11 is a small and simple AMQP client library for C++11
+ *
+ */
 #pragma once
 
 #define AMQPPORT 5672
@@ -23,6 +28,8 @@
 #define HEADER_FOOTER_SIZE 8 //  7 bytes up front, then payload, then 1 byte footer
 #define FRAME_MAX 131072    // max lenght (size) of frame
 
+#define RAND_STR_LENGTH 8
+
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
@@ -32,29 +39,30 @@
 #include <stdint.h>
 
 #include <amqp.h>
+#include <amqp_tcp_socket.h>
 #include <amqp_framing.h>
 
-#include <iostream>
+#include <sstream>
 #include <vector>
 #include <map>
 #include <memory>
 #include <functional>
+#include <algorithm>
+#include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <iostream>
 
 
 class AMQPQueue;
 
-enum class AMQPEventType
-{
+enum class AMQPEventType {
 	AMQP_MESSAGE, AMQP_SIGUSR, AMQP_CANCEL, AMQP_CLOSE_CHANNEL
 };
 
-class AMQPException
-{
+class AMQPException {
 	std::string message;
 	int code;
-
 public:
 	AMQPException(std::string message);
 	AMQPException(amqp_rpc_reply_t * res);
@@ -63,8 +71,7 @@ public:
 	uint16_t getReplyCode();
 };
 
-class AMQPMessage
-{
+class AMQPMessage {
 	char * data;
 	uint32_t len;
 	std::string exchange;
@@ -80,7 +87,7 @@ public:
 	~AMQPMessage();
 
 	void setMessage(const char * data, uint32_t length);
-	char * getMessage(uint32_t* length);
+	std::string getMessage(uint32_t * length);
 
 	void addHeader(std::string name, amqp_bytes_t * value);
 	void addHeader(std::string name, uint64_t * value);
@@ -113,7 +120,7 @@ class AMQPBase
 {
 protected:
 	std::string name;
-	short parms;
+	short params;
 	amqp_connection_state_t * cnn;
 	int channelNum;
 	AMQPMessage * pmessage;
@@ -123,6 +130,8 @@ protected:
 	void checkReply(amqp_rpc_reply_t * res);
 	void checkClosed(amqp_rpc_reply_t * res);
 	void openChannel();
+
+	std::string randomStr(size_t length);
 
 public:
 	virtual ~AMQPBase();
@@ -145,11 +154,11 @@ protected:
 
 public:
 	AMQPQueue(amqp_connection_state_t * cnn, int channelNum);
-	AMQPQueue(amqp_connection_state_t * cnn, int channelNum, std::string name);
 
 	void Declare();
 	void Declare(std::string name);
-	void Declare(std::string name, short parms);
+	void Declare(std::string name, short params);
+	void Declare(short params);
 
 	void Delete();
 	void Delete(std::string name);
@@ -220,13 +229,11 @@ class AMQPExchange: public AMQPBase
 
 public:
 	AMQPExchange(amqp_connection_state_t * cnn, int channelNum);
-	AMQPExchange(amqp_connection_state_t * cnn, int channelNum, std::string name);
 	virtual ~AMQPExchange();
 
-	void Declare();
 	void Declare(std::string name);
 	void Declare(std::string name, ExchangeType type);
-	void Declare(std::string name, ExchangeType type, short parms);
+	void Declare(std::string name, ExchangeType type, short params);
 
 	void Delete();
 	void Delete(std::string name);
@@ -264,24 +271,24 @@ class AMQP
 	std::string vhost;
 	std::string user;
 	std::string password;
-	int sockfd;
+
 	int channelNumber;
 
-	amqp_connection_state_t cnn;
-	AMQPExchange * exchange;
+	boost::shared_ptr<AMQPExchange> exchange;
+	std::vector<boost::shared_ptr<AMQPBase>> channels;
 
-	std::vector<AMQPBase*> channels;
+	amqp_socket_t * socket;
+	amqp_connection_state_t conn;
+
+	struct timeval * tv;
 
 public:
 	AMQP();
-	AMQP(std::string cnnStr);
+	AMQP(std::string connStr);
 	~AMQP();
 
-	AMQPExchange * createExchange();
-	AMQPExchange * createExchange(std::string name);
-
-	AMQPQueue * createQueue();
-	AMQPQueue * createQueue(std::string name);
+	boost::shared_ptr<AMQPExchange>	createExchange();
+	boost::shared_ptr<AMQPQueue>		createQueue();
 
 	void printConnect();
 
@@ -297,4 +304,27 @@ private:
 	void parseUserStr(std::string userString);
 	void sockConnect();
 	void login();
+};
+
+// utility functions
+class fn {
+	static inline std::string & ltrim(std::string & s) {
+		s.erase(
+			s.begin(),
+			std::find_if(s.begin(), s.end(),
+									std::not1(std::ptr_fun<int,int>(std::isspace))));
+		return s;
+	}
+	static inline std::string & rtrim(std::string & s) {
+		s.erase(
+			std::find_if(s.rbegin(), s.rend(),
+							std::not1(std::ptr_fun<int,int>(std::isspace))).base(),
+			s.end()
+		);
+		return s;
+	}
+public:
+	static inline std::string & trim(std::string & s) {
+		return ltrim(rtrim(s));
+	}
 };

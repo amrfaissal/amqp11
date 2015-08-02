@@ -1,12 +1,12 @@
 INCLUDE = -I/usr/local/include
 
-CXX      = g++
+CXX      = g++ -std=c++11
 CFLAGS   = -Wall -g -O2 $(INCLUDE) -MD
 CPPFLAGS = $(CFLAGS)
 
 LIBS     =
 LIBS    += -lrabbitmq
-LIBS    += -lamqpcpp
+LIBS    += -lamqp11
 LIBS    += -lboost_thread
 
 SOURCES  = consumer.cpp SynchronizedQueue.cpp
